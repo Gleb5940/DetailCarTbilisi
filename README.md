@@ -1,0 +1,241 @@
+[detail_car_tbilisi_production_crm.html](https://github.com/user-attachments/files/26834858/detail_car_tbilisi_production_crm.html)
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DetailCarTbilisi PRO</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b1220;--card:#111827;--border:#243244;--green:#22c55e;--text:#e5e7eb;--muted:#94a3b8;--danger:#ef4444}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,sans-serif;background:var(--bg);color:var(--text)}
+.container{max-width:760px;margin:auto;padding:16px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.lang button{background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--border);padding:14px;border-radius:14px;margin-bottom:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.btn,.option,.extra,.slot{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0b1220;color:var(--text);cursor:pointer}
+.active{background:var(--green);color:#000}
+.disabled{opacity:.3;pointer-events:none}
+input{width:100%;padding:12px;margin-top:8px;border-radius:10px;border:1px solid var(--border);background:#0b1220;color:var(--text)}
+.total{font-size:18px;color:var(--green);margin-top:10px}
+.receipt{border:1px solid var(--green);padding:10px;border-radius:10px;margin-top:10px;white-space:pre-line}
+.review{border:1px solid var(--border);padding:10px;border-radius:10px;margin-top:8px}
+.star{cursor:pointer;color:#475569;font-size:18px}
+.star.active{color:#facc15}
+.urgency{color:var(--danger);font-size:13px}
+.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="topbar">
+<h2 id="title"></h2>
+<div class="lang">
+<button onclick="setLang('ru')">RU</button>
+<button onclick="setLang('en')">EN</button>
+<button onclick="setLang('ka')">GE</button>
+</div>
+</div>
+
+<div class="card"><div class="urgency" id="urgency"></div></div>
+
+<div class="card">
+<h3 id="tServices"></h3>
+<div class="row" id="services"></div>
+<div class="small" id="serviceDesc"></div>
+</div>
+
+<div class="card" id="extrasCard" style="display:none">
+<h3 id="tExtras"></h3>
+<div class="row" id="extras"></div>
+</div>
+
+<div class="card"><h3 id="tCars"></h3><div class="row" id="cars"></div></div>
+
+<div class="card"><h3 id="tSlots"></h3><input type="date" id="date"><div class="row" id="slots"></div></div>
+
+<div class="card"><h3 id="tClient"></h3>
+<input id="name"><input id="phone"><input id="address">
+<div class="total" id="total"></div>
+<button class="btn" id="bookBtn" onclick="submitOrder()"></button>
+</div>
+
+<div class="card"><h3 id="tReceipts"></h3><div id="receipts"></div></div>
+
+<div class="card">
+<h3 id="tReviews"></h3>
+<div id="reviews"></div>
+<div id="stars"></div>
+<input id="reviewInput">
+<button class="btn" id="saveReview" onclick="saveReview()"></button>
+</div>
+
+</div>
+
+<script>
+const state={lang:'ru',service:null,car:null,slot:null,extras:[],rating:0}
+
+const dict={
+ru:{title:"DetailCarTbilisi",services:"Услуги",extras:"Доп услуги",cars:"Тип авто",slots:"Дата и время",client:"Данные клиента",receipts:"Чеки",reviews:"Отзывы",name:"Имя",phone:"Телефон",address:"Адрес",book:"Забронировать",save:"Сохранить",fill:"Заполните все поля",booked:"Забронировано"},
+en:{title:"DetailCarTbilisi",services:"Services",extras:"Extra services",cars:"Car type",slots:"Date & Time",client:"Client info",receipts:"Receipts",reviews:"Reviews",name:"Name",phone:"Phone",address:"Address",book:"Book",save:"Save",fill:"Fill all fields",booked:"Booked"},
+ka:{title:"DetailCarTbilisi",services:"სერვისები",extras:"დამატებითი სერვისები",cars:"ავტომობილი",slots:"თარიღი და დრო",client:"კლიენტი",receipts:"ქვითრები",reviews:"შეფასებები",name:"სახელი",phone:"ტელეფონი",address:"მისამართი",book:"დაჯავშნა",save:"შენახვა",fill:"შეავსე ყველა ველი",booked:"დაჯავშნილია"}
+}
+
+const serviceNames={ru:{basic:"Стандартная",deep:"Глубокая",all:"Все включено"},en:{basic:"Basic",deep:"Deep",all:"All inclusive"},ka:{basic:"სტანდარტული",deep:"ღრმა",all:"ყველაფერი"}}
+
+const serviceDesc={
+ru:{basic:"Пылесос, протирка, базовая уборка",deep:"Глубокая химчистка всех зон",all:"Полный детейлинг + все доп услуги"},
+en:{basic:"Vacuum + basic cleaning",deep:"Deep interior cleaning",all:"Full detailing + all extras"},
+ka:{basic:"სტანდარტული წმენდა",deep:"ღრმა წმენდა",all:"სრული დეტეილინგი"}
+}
+
+const services={basic:200,deep:350,all:500}
+
+const extrasList=[
+{k:'dirty',price:50},{k:'fur',price:40},{k:'leather',price:60},{k:'plastic',price:40}
+]
+
+const extrasNames={
+ru:{dirty:"Сильное загрязнение",fur:"Чистка от шерсти",leather:"Защита кожи",plastic:"Защита пластика"},
+en:{dirty:"Heavy dirt",fur:"Pet hair cleaning",leather:"Leather protection",plastic:"Plastic protection"},
+ka:{dirty:"ძლიერი ჭუჭყი",fur:"ბეწვის წმენდა",leather:"კანის დაცვა",plastic:"პლასტიკის დაცვა"}
+}
+
+const cars=[{k:'sedan'},{k:'hatch'},{k:'suv'},{k:'jeep'}]
+const carNames={ru:{sedan:"Седан",hatch:"Хэтчбек",suv:"Кроссовер",jeep:"Джип"},en:{sedan:"Sedan",hatch:"Hatchback",suv:"SUV",jeep:"Jeep"},ka:{sedan:"სედანი",hatch:"ჰეჩბეკი",suv:"ქროსოვერი",jeep:"ჯიპი"}}
+
+const slotsBase=["10:00","14:00","18:00"]
+
+function $(id){return document.getElementById(id)}
+function setLang(l){state.lang=l;renderAll()}
+function clearActive(sel){document.querySelectorAll(sel).forEach(x=>x.classList.remove('active'))}
+
+function getBookings(){return JSON.parse(localStorage.getItem('book')||'{}')}
+function saveBooking(d,s){const b=getBookings();if(!b[d])b[d]=[];b[d].push(s);localStorage.setItem('book',JSON.stringify(b))}
+
+function renderAll(){
+const d=dict[state.lang]
+$("title").innerText=d.title
+$("tServices").innerText=d.services
+$("tExtras").innerText=d.extras
+$("tCars").innerText=d.cars
+$("tSlots").innerText=d.slots
+$("tClient").innerText=d.client
+$("tReceipts").innerText=d.receipts
+$("tReviews").innerText=d.reviews
+$("name").placeholder=d.name
+$("phone").placeholder=d.phone
+$("address").placeholder=d.address
+$("reviewInput").placeholder=d.reviews
+$("bookBtn").innerText=d.book
+$("saveReview").innerText=d.save
+renderServices();renderExtras();renderCars();renderSlots();renderReceipts();renderReviews();renderStars();updateTotal()
+}
+
+function renderServices(){
+const el=$("services");el.innerHTML=''
+Object.keys(services).forEach(k=>{
+const b=document.createElement('div')
+b.className='btn'
+b.innerText=serviceNames[state.lang][k]
+b.onclick=()=>{state.service=k;clearActive('#services .btn');b.classList.add('active');renderExtras();$("serviceDesc").innerText=serviceDesc[state.lang][k];updateTotal()}
+el.appendChild(b)
+})
+}
+
+function renderExtras(){
+const card=$("extrasCard");const el=$("extras");el.innerHTML=''
+if(state.service==='basic'||state.service==='deep'){
+card.style.display='block'
+extrasList.forEach(e=>{
+const d=document.createElement('div')
+d.className='extra'
+d.innerText=extrasNames[state.lang][e.k]
+d.onclick=()=>{if(state.extras.includes(e)){state.extras=state.extras.filter(x=>x!==e);d.classList.remove('active')}else{state.extras.push(e);d.classList.add('active')}updateTotal()}
+el.appendChild(d)
+})
+}else{card.style.display='none';state.extras=[]}
+}
+
+function renderCars(){
+const el=$("cars");el.innerHTML=''
+cars.forEach(c=>{
+const d=document.createElement('div')
+d.className='option'
+d.innerText=carNames[state.lang][c.k]
+d.onclick=()=>{state.car=c;clearActive('#cars .option');d.classList.add('active')}
+el.appendChild(d)
+})
+}
+
+function renderSlots(){
+const date=$("date").value
+const el=$("slots");el.innerHTML=''
+const booked=(getBookings()[date]||[])
+slotsBase.forEach(t=>{
+const d=document.createElement('div')
+d.className='slot'
+d.innerText=t
+if(booked.includes(t))d.classList.add('disabled')
+d.onclick=()=>{if(d.classList.contains('disabled'))return;state.slot=t;clearActive('#slots .slot');d.classList.add('active')}
+el.appendChild(d)
+})
+}
+
+function updateTotal(){
+if(!state.service)return
+let sum=services[state.service]
+state.extras.forEach(e=>sum+=e.price)
+$("total").innerText=sum+"₾"
+}
+
+function submitOrder(){
+const d=dict[state.lang]
+const n=$("name").value.trim();const p=$("phone").value.trim();const a=$("address").value.trim();const dt=$("date").value
+if(!n||!p||!a||!state.service||!state.car||!state.slot||!dt){alert(d.fill);return}
+saveBooking(dt,state.slot)
+const receipt=`${n} | ${p} | ${serviceNames[state.lang][state.service]} | ${carNames[state.lang][state.car.k]} | ${state.slot} | ${$("total").innerText}`
+const list=JSON.parse(localStorage.getItem('receipts')||'[]')
+list.push(receipt)
+localStorage.setItem('receipts',JSON.stringify(list))
+renderReceipts();renderSlots();alert(d.booked)
+}
+
+function renderReceipts(){
+const el=$("receipts");el.innerHTML=''
+const list=JSON.parse(localStorage.getItem('receipts')||'[]')
+list.slice().reverse().forEach(r=>{
+const d=document.createElement('div')
+d.className='receipt'
+d.innerText=r
+el.appendChild(d)
+})
+}
+
+function renderStars(){
+const el=$("stars");el.innerHTML=''
+for(let i=1;i<=5;i++){const s=document.createElement('span');s.innerText='★';s.className='star';if(i<=state.rating)s.classList.add('active');s.onclick=()=>{state.rating=i;renderStars()};el.appendChild(s)}
+}
+
+function saveReview(){
+const txt=$("reviewInput").value.trim();if(!txt||!state.rating)return
+const list=JSON.parse(localStorage.getItem('reviews')||'[]')
+list.push({t:txt,r:state.rating})
+localStorage.setItem('reviews',JSON.stringify(list))
+renderReviews();$("reviewInput").value='';state.rating=0;renderStars()
+}
+
+function renderReviews(){
+const el=$("reviews");el.innerHTML=''
+const list=JSON.parse(localStorage.getItem('reviews')||'[]')
+list.slice().reverse().forEach(r=>{
+const d=document.createElement('div');d.className='review';d.innerText='★'.repeat(r.r)+" "+r.t;el.appendChild(d)})
+}
+
+window.onload=()=>{renderAll();$("date").addEventListener('change',renderSlots)}
+</script>
+</body>
+</html>
